@@ -1,0 +1,15 @@
+version: '3'
+services:
+  kanboard:
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.port=443
+      - traefik.docker.network=proxy
+      - traefik.fronted.rule=Host:kanboard.raulchiclano.es
+      - traefik.backend=kanboard
+
+networks:
+  proxy:
+    external: true

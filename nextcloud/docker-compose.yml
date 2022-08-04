@@ -1,0 +1,60 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:alpine
+    restart: always
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  redis:
+    image: redis:alpine
+    restart: always
+    networks:
+      - internal
+
+  app:
+    image: nextcloud:fpm-alpine
+    restart: always
+    volumes:
+      - ./nextcloud:/var/www/html
+    environment:
+      - POSTGRES_HOST=db
+      - REDIS_HOST=redis
+    depends_on:
+      - db
+      - redis
+    networks:
+      - internal
+
+  web:
+    image: nginx:alpine
+    restart: always
+    volumes:
+      - ./nextcloud:/var/www/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+    networks:
+      - internal
+      - proxy
+
+  cron:
+    image: nextcloud:fpm-alpine
+    restart: always
+    volumes:
+      - ./nextcloud:/var/www/html
+    entrypoint: /cron.sh
+    depends_on:
+      - db
+      - redis
+    networks:
+      - internal
+
+
+networks:
+  internal:
+  proxy:
+    external: true

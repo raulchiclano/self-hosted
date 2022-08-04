@@ -1,0 +1,10 @@
+version: '3'
+services:
+  pastebin:
+    build: .
+    image: atareao/pastebin:v1.0
+    container_name: pastebin
+    restart: unless-stopped
+    init: true
+    volumes:
+      - ./db:/rs/db
