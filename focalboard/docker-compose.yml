@@ -1,10 +1,50 @@
-version: "3"
+version: '3'
+
 services:
   app:
-    build:
-      context: ../
-      dockerfile: docker/Dockerfile
+    image: mattermost/focalboard
     container_name: focalboard
+    depends_on:
+      - focalboard-db
+    
+    expose:
+      - 8000
     environment:
-      - VIRTUAL_HOST=focalboard.local
+      - VIRTUAL_HOST=localhost
       - VIRTUAL_PORT=8000
+      - VIRTUAL_PROTO=http
+    volumes:
+      - "./config.json:/opt/focalboard/config.json"
+    restart: always
+    networks:
+      - internal
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.app.loadbalancer.server.port=8000
+      - traefik.http.routers.app.entrypoints=web
+      - traefik.http.routers.app.rule=Host(`${FQDN}`)
+      - traefik.http.middlewares.app-https-redirect.redirectscheme.scheme=websecure
+      - traefik.http.routers.app.middlewares=app-https-redirect
+      - traefik.http.routers.app-secure.entrypoints=websecure
+      - traefik.http.routers.app-secure.rule=Host(`${FQDN}`)
+      - traefik.http.routers.app-secure.tls=true
+      - traefik.http.routers.app-secure.tls.certresolver=letsencrypt
+
+  focalboard-db:
+    image: postgres:12
+    container_name: focalboard-postgres
+    restart: always
+    volumes:
+      - "./data:/var/lib/postgresql/data"
+    environment:
+      POSTGRES_DB: boards
+      POSTGRES_USER: boardsuser
+      POSTGRES_PASSWORD: boardsuser-password
+    networks:
+      - internal
+ 
+networks:
+  internal:
+  proxy:
+    external: true

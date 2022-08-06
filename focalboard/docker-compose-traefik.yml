@@ -1,32 +1,14 @@
 version: '3'
-services:
-  kanboard:
-    networks:
-      - proxy
-    labels:
-      - traefik.enable=true
-      - traefik.http.services.kanboard.loadbalancer.server.port=80
-      - traefik.http.routers.kanboard.entrypoints=web
-      - traefik.http.routers.kanboard.rule=Host(`${FQDN}`)
-      - traefik.http.middlewares.kanboard-https-redirect.redirectscheme.scheme=websecure
-      - traefik.http.routers.kanboard.middlewares=kanboard-https-redirect
-      - traefik.http.routers.kanboard-secure.entrypoints=websecure
-      - traefik.http.routers.kanboard-secure.rule=Host(`${FQDN}`)
-      - traefik.http.routers.kanboard-secure.tls=true
-      - traefik.http.routers.kanboard-secure.tls.certresolver=letsencrypt
-
-networks:
-  proxy:
-    external: true
 
 services:
   app:
-    build:
-      context: ../
-      dockerfile: docker/Dockerfile
+    image: mattermost/focalboard
     container_name: focalboard
     depends_on:
       - focalboard-db
+    
+    expose:
+      - 8000
     environment:
       - VIRTUAL_HOST=localhost
       - VIRTUAL_PORT=8000
@@ -35,21 +17,22 @@ services:
       - "./config.json:/opt/focalboard/config.json"
     restart: always
     networks:
+      - internal
       - proxy
-
-  proxy:
-    image: jwilder/nginx-proxy:latest
-    container_name: focalboard-proxy
-    restart: always
-    ports:
-      - 80:80
-    volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-    networks:
-      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.app.loadbalancer.server.port=8000
+      - traefik.http.routers.app.entrypoints=web
+      - traefik.http.routers.app.rule=Host(`${FQDN}`)
+      - traefik.http.middlewares.app-https-redirect.redirectscheme.scheme=websecure
+      - traefik.http.routers.app.middlewares=app-https-redirect
+      - traefik.http.routers.app-secure.entrypoints=websecure
+      - traefik.http.routers.app-secure.rule=Host(`${FQDN}`)
+      - traefik.http.routers.app-secure.tls=true
+      - traefik.http.routers.app-secure.tls.certresolver=letsencrypt
 
   focalboard-db:
-    image: postgres:latest
+    image: postgres:12
     container_name: focalboard-postgres
     restart: always
     volumes:
@@ -58,6 +41,10 @@ services:
       POSTGRES_DB: boards
       POSTGRES_USER: boardsuser
       POSTGRES_PASSWORD: boardsuser-password
-
+    networks:
+      - internal
+ 
 networks:
+  internal:
   proxy:
+    external: true
